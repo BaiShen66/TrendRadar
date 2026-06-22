@@ -320,7 +320,7 @@ storage:
   # - auto: 自动选择（GitHub Actions 且配置了远程存储 → remote，否则 → local）
   # - local: 本地 SQLite + TXT/HTML 文件
   # - remote: 远程云存储（S3 兼容协议，支持 R2/OSS/COS 等）
-  backend: "auto"
+  backend: "remote"
 
   # 数据格式选项
   formats:
@@ -345,7 +345,7 @@ storage:
                                       # Cloudflare R2: https://<account_id>.r2.cloudflarestorage.com
                                       # 阿里云 OSS: https://oss-cn-hangzhou.aliyuncs.com
                                       # 腾讯云 COS: https://cos.ap-guangzhou.myqcloud.com
-    bucket_name: ""                   # 存储桶名称
+    bucket_name: "trendradar-data"                   # 存储桶名称
     access_key_id: ""                 # 访问密钥 ID
     secret_access_key: ""             # 访问密钥
     region: ""                        # 区域（可选，部分服务商需要）
