@@ -280,11 +280,11 @@ class StorageSyncTools:
 
                 # 拉取单个日期
                 try:
-                    local_date_dir = local_dir / date_str
-                    local_db_path = local_date_dir / "news.db"
+                    news_dir = local_dir / "news"
                     remote_key = f"news/{date_str}.db"
 
-                    local_date_dir.mkdir(parents=True, exist_ok=True)
+                    news_dir.mkdir(parents=True, exist_ok=True)
+                    local_db_path = news_dir / f"{date_str}.db"
                     remote_backend.s3_client.download_file(
                         remote_backend.bucket_name,
                         remote_key,
