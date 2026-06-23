@@ -1,8 +1,8 @@
 """
-TrendRadar MCP Server with REST API
-  - MCP SSE: /sse (for MCP clients)
-  - Health:  /health
-  - REST:    /api/crawl, /api/search, /api/latest, /api/tools
+TrendRadar MCP + REST API Server
+  - MCP:     /mcp (MCP SSE transport, GET /mcp/sse + POST /mcp/messages/)
+  - REST:    /api/crawl, /api/search, /api/latest, /api/trend
+  - Health:  /health, /
 """
 import json
 import traceback
@@ -13,6 +13,10 @@ from starlette.routing import Route, Mount
 
 from mcp_server.server import mcp
 from mcp_server.server import trigger_crawl, search_news, get_latest_news, analyze_topic_trend
+
+
+async def root(request):
+    return JSONResponse({"status": "ok", "service": "trendradar-mcp"})
 
 
 async def health(request):
@@ -66,15 +70,18 @@ async def api_trend(request):
     return await safe_call(analyze_topic_trend, topic=topic, analysis_type=params.get("type", "trend"), granularity=params.get("granularity", "day"))
 
 
-sse_app = mcp.sse_app()
+# MCP SSE app
+mcp_app = mcp.sse_app()
 
+# 主应用：/, /health, /api/* 路由 + /mcp 挂载 MCP SSE app
 app = Starlette(routes=[
+    Route("/", endpoint=root, methods=["GET"]),
     Route("/health", endpoint=health, methods=["GET"]),
     Route("/api/crawl", endpoint=api_crawl, methods=["GET"]),
     Route("/api/search", endpoint=api_search, methods=["GET"]),
     Route("/api/latest", endpoint=api_latest, methods=["GET"]),
     Route("/api/trend", endpoint=api_trend, methods=["GET"]),
-    Mount("/", app=sse_app),
+    Mount("/mcp", app=mcp_app),
 ])
 
 if __name__ == "__main__":
