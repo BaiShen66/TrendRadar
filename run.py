@@ -259,7 +259,9 @@ def run_tool(name, args):
         return _tools["system"].get_system_status()
     elif name == "trigger_crawl":
         r = _orig_crawl(args.get("platforms"), args.get("save_to_local",False), args.get("include_url",False))
-        if r.get("success"): _run_rss()
+        if r.get("success"):
+            _run_rss()
+            _tools["storage"].sync_from_remote(days=1)
         get_cache().clear()
         return r
     elif name == "sync_from_remote":
