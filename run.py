@@ -1,8 +1,8 @@
 """
 TrendRadar MCP + REST API Server
-  - MCP:     /mcp (MCP SSE transport, GET /mcp/sse + POST /mcp/messages/)
+  - MCP SSE: GET /mcp (SSE stream), POST /mcp/messages/ (messages)
   - REST:    /api/crawl, /api/search, /api/latest, /api/trend
-  - Health:  /health, /
+  - Health:  /health
 """
 import json
 import traceback
@@ -70,10 +70,18 @@ async def api_trend(request):
     return await safe_call(analyze_topic_trend, topic=topic, analysis_type=params.get("type", "trend"), granularity=params.get("granularity", "day"))
 
 
-# MCP SSE app
+# ─── MCP SSE app ──────────────────────────────────────
 mcp_app = mcp.sse_app()
 
-# 主应用：/, /health, /api/* 路由 + /mcp 挂载 MCP SSE app
+# 把 MCP app 内部的路由路径从 /sse → /mcp，/messages/ → /mcp/messages/
+for route in mcp_app.routes:
+    if hasattr(route, 'path'):
+        if route.path == '/sse':
+            route.path = '/mcp'
+        elif route.path == '/messages/':
+            route.path = '/mcp/messages/'
+
+# ─── 主应用 ────────────────────────────────────────────
 app = Starlette(routes=[
     Route("/", endpoint=root, methods=["GET"]),
     Route("/health", endpoint=health, methods=["GET"]),
@@ -81,7 +89,7 @@ app = Starlette(routes=[
     Route("/api/search", endpoint=api_search, methods=["GET"]),
     Route("/api/latest", endpoint=api_latest, methods=["GET"]),
     Route("/api/trend", endpoint=api_trend, methods=["GET"]),
-    Mount("/mcp", app=mcp_app),
+    Mount("/", app=mcp_app),
 ])
 
 if __name__ == "__main__":
