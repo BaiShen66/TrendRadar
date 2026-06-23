@@ -187,8 +187,6 @@ tool("tr_send_notification", "Send a notification message via configured channel
 
 
 def result_json(r):
-    if isinstance(r, dict) and "data" in r:
-        return [{"type": "text", "text": json.dumps(d, ensure_ascii=False)} for d in r["data"]]
     return [{"type": "text", "text": json.dumps(r, ensure_ascii=False)}]
 
 
@@ -239,22 +237,87 @@ def run_tool(name, args):
             threshold=args.get("threshold",0.6), include_url=args.get("include_url",False),
             include_rss=args.get("include_rss",False), rss_limit=args.get("rss_limit",20))
     elif name == "tr_search_news_advanced":
-        return _tools["search"].search_news_advanced(
-            args.get("query",""), args.get("date_range"), args.get("platforms"),
-            args.get("limit",50), args.get("sort_by","relevance"), args.get("threshold",0.6),
-            args.get("include_url",False), args.get("include_rss",False), args.get("include_processed",False))
+        return _tools["search"].search_news_unified(
+            query=args.get("query",""),
+            search_mode="keyword",
+            date_range=args.get("date_range"),
+            platforms=args.get("platforms"),
+            limit=args.get("limit",50),
+            sort_by=args.get("sort_by","relevance"),
+            threshold=args.get("threshold",0.6),
+            include_url=args.get("include_url",False),
+            include_rss=args.get("include_rss",False),
+            rss_limit=args.get("rss_limit",20))
     elif name == "tr_get_news_statistics":
-        return _tools["data"].get_news_statistics(args.get("platforms"), args.get("date_range"), args.get("group_by","platform"))
+        # DataQueryTools 没有 get_news_statistics，用 get_latest_news 聚合实现
+        r = _tools["data"].get_latest_news(
+            platforms=args.get("platforms"),
+            limit=1000,
+            include_url=False
+        )
+        if not r.get("success"):
+            return r
+        group_by = args.get("group_by", "platform")
+        from collections import defaultdict
+        from datetime import datetime
+        groups = defaultdict(list)
+        for item in r.get("data", []):
+            key = item.get("platform_name" if group_by == "platform" else "date", "unknown")
+            groups[key].append(item)
+        stats = {k: {"count": len(v), "items": v[:5]} for k, v in groups.items()}
+        return {
+            "success": True,
+            "group_by": group_by,
+            "total": len(r.get("data", [])),
+            "groups": list(groups.keys()),
+            "statistics": stats
+        }
     elif name == "tr_analyze_sentiment":
         return _tools["analytics"].analyze_sentiment(args.get("topic",""), args.get("date_range"), args.get("platforms"), args.get("time_range",24))
     elif name == "tr_analyze_topic_trend":
         return _tools["analytics"].analyze_topic_trend_unified(args.get("topic",""), args.get("analysis_type","trend"), args.get("date_range"), args.get("granularity","day"))
     elif name == "tr_analyze_cross_platform":
-        return _tools["analytics"].analyze_cross_platform(args.get("topic",""), args.get("platforms"), args.get("date_range"))
+        return _tools["analytics"].analyze_data_insights_unified(
+            insight_type="platform_compare",
+            topic=args.get("topic"),
+            date_range=args.get("date_range"))
     elif name == "tr_generate_summary_report":
-        return _tools["analytics"].generate_summary_report(args.get("topic",""), args.get("date_range"), args.get("platforms"), args.get("granularity","day"), args.get("report_type","overview"))
+        # 实际签名: generate_summary_report(report_type="daily|weekly", date_range=None)
+        # report_type 映射: overview → daily, detailed/weekly → weekly, trend → daily
+        rt = args.get("report_type", "daily")
+        if rt in ("detailed", "trend", "weekly"):
+            rt = "weekly"
+        else:
+            rt = "daily"
+        return _tools["analytics"].generate_summary_report(
+            report_type=rt,
+            date_range=args.get("date_range"))
     elif name == "tr_get_platform_summary":
-        return _tools["data"].get_platform_summary(args.get("platforms"), args.get("include_platform_names",True))
+        import yaml
+        config_path = PROJECT_ROOT / "config" / "config.yaml"
+        if not config_path.exists():
+            return {"success": False, "error": {"code": "CONFIG_NOT_FOUND", "message": "config.yaml 不存在"}}
+        with open(config_path, "r", encoding="utf-8") as f:
+            cfg = yaml.safe_load(f)
+        sources = cfg.get("platforms", {}).get("sources", [])
+        include_names = args.get("include_platform_names", True)
+        result = []
+        for s in sources:
+            if s.get("enabled", True):
+                item = {"id": s["id"]}
+                if include_names:
+                    item["name"] = s.get("name", s["id"])
+                result.append(item)
+        # 也加入 RSS 源
+        rss = cfg.get("rss", {})
+        if rss.get("enabled", True):
+            for f in rss.get("feeds", []):
+                if f.get("enabled", True):
+                    item = {"id": f["id"], "type": "rss"}
+                    if include_names:
+                        item["name"] = f.get("name", f["id"])
+                    result.append(item)
+        return {"success": True, "platforms": result, "total": len(result)}
     elif name == "tr_get_system_status":
         return _tools["system"].get_system_status()
     elif name == "tr_trigger_crawl":
