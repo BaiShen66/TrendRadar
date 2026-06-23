@@ -695,7 +695,7 @@ async def compare_periods(
 # ==================== 智能检索工具 ====================
 
 
-@mcp.tool(name="tr_search_news"
+@mcp.tool(name="tr_search_news")
 async def search_news(
     query: str,
     search_mode: str = "keyword",
@@ -780,7 +780,7 @@ async def get_current_config(
 
 
 
-@mcp.tool(name="tr_get_current_config")
+@mcp.tool(name="tr_get_system_status")
 async def get_system_status() -> str:
     """
     获取系统运行状态和健康检查信息
@@ -796,7 +796,7 @@ async def get_system_status() -> str:
 
 
 
-@mcp.tool(name="tr_get_current_config")
+@mcp.tool(name="tr_check_version")
 async def check_version(
     proxy_url: Optional[str] = None
 ) -> str:
