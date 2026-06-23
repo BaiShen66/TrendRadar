@@ -213,6 +213,7 @@ class SystemManagementTools:
         try:
             from trendradar.crawler.fetcher import DataFetcher
             from trendradar.storage.local import LocalStorageBackend
+            from trendradar.storage.remote import RemoteStorageBackend
             from trendradar.storage.base import convert_crawl_results_to_news_data
             from trendradar.utils.time import get_configured_time, format_date_folder, format_time_filename
             from ..services.cache_service import get_cache
@@ -259,9 +260,28 @@ class SystemManagementTools:
                 failed_ids=failed_ids, crawl_time=crawl_time_str, crawl_date=crawl_date
             )
 
-            storage = LocalStorageBackend(
-                data_dir=str(self.project_root / "output"),
-                enable_txt=True, enable_html=True, timezone=timezone
+            import os
+            s3_bucket = os.environ.get("S3_BUCKET_NAME", "trendradar-data")
+            s3_endpoint = os.environ.get("S3_ENDPOINT_URL", "")
+            s3_key = os.environ.get("S3_ACCESS_KEY_ID", "")
+            s3_secret = os.environ.get("S3_SECRET_ACCESS_KEY", "")
+            s3_region = os.environ.get("S3_REGION", "auto")
+            if s3_endpoint and s3_key and s3_secret:
+                storage = RemoteStorageBackend(
+                    bucket_name=s3_bucket,
+                    endpoint_url=s3_endpoint,
+                    access_key_id=s3_key,
+                    secret_access_key=s3_secret,
+                    region=s3_region,
+                    enable_txt=True, enable_html=True, timezone=timezone
+                )
+                self.tool_log("[System] 远程存储后端已连接: %s/%s" % (s3_endpoint, s3_bucket))
+            else:
+                storage = LocalStorageBackend(
+                    data_dir=str(self.project_root / "output"),
+                    enable_txt=True, enable_html=True, timezone=timezone
+                )
+                self.tool_log("[System] 未检测到远程存储配置，使用本地存储后端")
             )
 
             try:
