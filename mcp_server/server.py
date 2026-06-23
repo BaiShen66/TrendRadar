@@ -115,7 +115,8 @@ async def get_keywords_resource() -> str:
 
 # ==================== 日期解析工具（优先调用）====================
 
-@mcp.tool
+
+@mcp.tool(name="tr_resolve_date_range")
 async def resolve_date_range(
     expression: str
 ) -> str:
@@ -186,7 +187,7 @@ async def resolve_date_range(
 
 # ==================== 数据查询工具 ====================
 
-@mcp.tool
+@mcp.tool(name="tr_get_latest_news")
 async def get_latest_news(
     platforms: Optional[List[str]] = None,
     limit: int = 50,
@@ -216,7 +217,7 @@ async def get_latest_news(
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
-@mcp.tool
+@mcp.tool(name="tr_get_trending_topics")
 async def get_trending_topics(
     top_n: int = 10,
     mode: str = 'current',
@@ -251,7 +252,8 @@ async def get_trending_topics(
 
 # ==================== RSS 数据查询工具 ====================
 
-@mcp.tool
+
+@mcp.tool(name="tr_get_latest_rss")
 async def get_latest_rss(
     feeds: Optional[List[str]] = None,
     days: int = 1,
@@ -284,7 +286,7 @@ async def get_latest_rss(
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
-@mcp.tool
+@mcp.tool(name="tr_search_rss")
 async def search_rss(
     keyword: str,
     feeds: Optional[List[str]] = None,
@@ -324,7 +326,7 @@ async def search_rss(
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
-@mcp.tool
+@mcp.tool(name="tr_get_rss_feeds_status")
 async def get_rss_feeds_status() -> str:
     """
     获取 RSS 源状态信息
@@ -347,7 +349,7 @@ async def get_rss_feeds_status() -> str:
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
-@mcp.tool
+@mcp.tool(name="tr_get_news_by_date")
 async def get_news_by_date(
     date_range: Optional[Union[Dict[str, str], str]] = None,
     platforms: Optional[List[str]] = None,
@@ -384,7 +386,7 @@ async def get_news_by_date(
 
 # ==================== 高级数据分析工具 ====================
 
-@mcp.tool
+@mcp.tool(name="tr_analyze_topic_trend")
 async def analyze_topic_trend(
     topic: str,
     analysis_type: str = "trend",
@@ -436,7 +438,8 @@ async def analyze_topic_trend(
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
-@mcp.tool
+
+@mcp.tool(name="tr_analyze_data_insights")
 async def analyze_data_insights(
     insight_type: str = "platform_compare",
     topic: Optional[str] = None,
@@ -480,7 +483,8 @@ async def analyze_data_insights(
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
-@mcp.tool
+
+@mcp.tool(name="tr_analyze_sentiment")
 async def analyze_sentiment(
     topic: Optional[str] = None,
     platforms: Optional[List[str]] = None,
@@ -521,7 +525,7 @@ async def analyze_sentiment(
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
-@mcp.tool
+@mcp.tool(name="tr_find_related_news")
 async def find_related_news(
     reference_title: str,
     date_range: Optional[Union[Dict[str, str], str]] = None,
@@ -561,7 +565,7 @@ async def find_related_news(
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
-@mcp.tool
+@mcp.tool(name="tr_generate_summary_report")
 async def generate_summary_report(
     report_type: str = "daily",
     date_range: Optional[Union[Dict[str, str], str]] = None
@@ -588,7 +592,8 @@ async def generate_summary_report(
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
-@mcp.tool
+
+@mcp.tool(name="tr_aggregate_news")
 async def aggregate_news(
     date_range: Optional[Union[Dict[str, str], str]] = None,
     platforms: Optional[List[str]] = None,
@@ -627,7 +632,7 @@ async def aggregate_news(
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
-@mcp.tool
+@mcp.tool(name="tr_compare_periods")
 async def compare_periods(
     period1: Union[Dict[str, str], str],
     period2: Union[Dict[str, str], str],
@@ -689,7 +694,8 @@ async def compare_periods(
 
 # ==================== 智能检索工具 ====================
 
-@mcp.tool
+
+@mcp.tool(name="tr_search_news"
 async def search_news(
     query: str,
     search_mode: str = "keyword",
@@ -749,7 +755,8 @@ async def search_news(
 
 # ==================== 配置与系统管理工具 ====================
 
-@mcp.tool
+
+@mcp.tool(name="tr_get_current_config")
 async def get_current_config(
     section: str = "all"
 ) -> str:
@@ -772,7 +779,8 @@ async def get_current_config(
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
-@mcp.tool
+
+@mcp.tool(name="tr_get_current_config")
 async def get_system_status() -> str:
     """
     获取系统运行状态和健康检查信息
@@ -787,7 +795,8 @@ async def get_system_status() -> str:
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
-@mcp.tool
+
+@mcp.tool(name="tr_get_current_config")
 async def check_version(
     proxy_url: Optional[str] = None
 ) -> str:
@@ -811,7 +820,7 @@ async def check_version(
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
-@mcp.tool
+@mcp.tool(name="tr_trigger_crawl")
 async def trigger_crawl(
     platforms: Optional[List[str]] = None,
     save_to_local: bool = False,
@@ -842,7 +851,7 @@ async def trigger_crawl(
 
 # ==================== 存储同步工具 ====================
 
-@mcp.tool
+@mcp.tool(name="tr_sync_from_remote")
 async def sync_from_remote(
     days: int = 7
 ) -> str:
@@ -883,7 +892,7 @@ async def sync_from_remote(
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
-@mcp.tool
+@mcp.tool(name="tr_get_storage_status")
 async def get_storage_status() -> str:
     """
     获取存储配置和状态
@@ -898,7 +907,8 @@ async def get_storage_status() -> str:
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
-@mcp.tool
+
+@mcp.tool(name="tr_list_available_dates")
 async def list_available_dates(
     source: str = "both"
 ) -> str:
@@ -927,7 +937,7 @@ async def list_available_dates(
 
 # ==================== 文章内容读取工具 ====================
 
-@mcp.tool
+@mcp.tool(name="tr_read_article")
 async def read_article(
     url: str,
     timeout: int = 30
@@ -967,7 +977,8 @@ async def read_article(
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
-@mcp.tool
+
+@mcp.tool(name="tr_read_articles_batch")
 async def read_articles_batch(
     urls: List[str],
     timeout: int = 30
@@ -1009,7 +1020,7 @@ async def read_articles_batch(
 # ==================== 通知推送工具 ====================
 
 
-@mcp.tool
+@mcp.tool(name="tr_get_channel_format_guide")
 async def get_channel_format_guide(channel: Optional[str] = None) -> str:
     """
     获取通知渠道的格式化策略指南
@@ -1049,7 +1060,7 @@ async def get_channel_format_guide(channel: Optional[str] = None) -> str:
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
-@mcp.tool
+@mcp.tool(name="tr_get_notification_channels")
 async def get_notification_channels() -> str:
     """
     获取所有已配置的通知渠道及其状态
@@ -1068,7 +1079,7 @@ async def get_notification_channels() -> str:
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
-@mcp.tool
+@mcp.tool(name="tr_send_channel_notification")
 async def send_channel_notification(
     message: str,
     title: str = "TrendRadar 通知",
