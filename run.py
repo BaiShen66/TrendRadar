@@ -1,7 +1,7 @@
 """
 TrendRadar MCP Bridge (23 Tools + RSS + R2 + Health)
-- POST /mcp 1 JSON-RPC (23 tools with full schemas)
-- GET /, /health 1 Health checks
+- POST /mcp → JSON-RPC (23 tools with full schemas)
+- GET /, /health → Health checks
 - trigger_crawl auto-fetches RSS
 """
 import json, os, traceback
@@ -109,7 +109,7 @@ tool("tr_analyze_sentiment", "Analyze sentiment/emotion trends for a topic over 
 tool("tr_analyze_topic_trend", "Analyze how a topic's popularity trend changes over time",
      type="object", properties={
          "topic": {"type": "string"},
-         "analysis_type": {"type": "string", "enum": ["trend", "lifecycle", "viral", "predict"], "default": "trend"},
+         "analysis_type": {"type": "string", "enum": ["trend", "sentiment", "overview"], "default": "trend"},
          "date_range": {"type": "object", "properties": {"start": {"type": "string"}, "end": {"type": "string"}}},
          "granularity": {"type": "string", "enum": ["hour", "day", "week"], "default": "day"}
      }, required=["topic"])
@@ -181,7 +181,7 @@ tool("tr_get_notification_channels", "Get all configured notification channels a
 tool("tr_send_notification", "Send a notification message via configured channels",
      type="object", properties={
          "message": {"type": "string", "description": "Markdown message content"},
-         "title": {"type": "string", "default": "TrendRadar "},
+         "title": {"type": "string", "default": "TrendRadar 通知"},
          "channels": {"type": "array", "items": {"type": "string"}, "description": "Target channels (all if omitted)"}
      }, required=["message"])
 
@@ -249,7 +249,7 @@ def run_tool(name, args):
             include_rss=args.get("include_rss",False),
             rss_limit=args.get("rss_limit",20))
     elif name == "tr_get_news_statistics":
-        # DataQueryTools  get_news_statistics，用 get_latest_news 聚合实现
+        # DataQueryTools 没有 get_news_statistics，用 get_latest_news 聚合实现
         r = _tools["data"].get_latest_news(
             platforms=args.get("platforms"),
             limit=1000,
@@ -273,27 +273,17 @@ def run_tool(name, args):
             "statistics": stats
         }
     elif name == "tr_analyze_sentiment":
-        return _tools["analytics"].analyze_sentiment(
-            topic=args.get("topic"),
-            platforms=args.get("platforms"),
-            date_range=args.get("date_range"),
-            limit=args.get("limit", 50),
-            sort_by_weight=args.get("sort_by_weight", True),
-            include_url=args.get("include_url", False))
+        return _tools["analytics"].analyze_sentiment(args.get("topic",""), args.get("date_range"), args.get("platforms"), args.get("time_range",24))
     elif name == "tr_analyze_topic_trend":
-        return _tools["analytics"].analyze_topic_trend_unified(
-            topic=args.get("topic", ""),
-            analysis_type=args.get("analysis_type", "trend"),
-            date_range=args.get("date_range"),
-            granularity=args.get("granularity", "day"))
+        return _tools["analytics"].analyze_topic_trend_unified(args.get("topic",""), args.get("analysis_type","trend"), args.get("date_range"), args.get("granularity","day"))
     elif name == "tr_analyze_cross_platform":
         return _tools["analytics"].analyze_data_insights_unified(
             insight_type="platform_compare",
             topic=args.get("topic"),
             date_range=args.get("date_range"))
     elif name == "tr_generate_summary_report":
-        # 签名: generate_summary_report(report_type="daily|weekly", date_range=None)
-        # report_type 映射: overview  daily, detailed/weekly  weekly, trend  daily
+        # 实际签名: generate_summary_report(report_type="daily|weekly", date_range=None)
+        # report_type 映射: overview → daily, detailed/weekly → weekly, trend → daily
         rt = args.get("report_type", "daily")
         if rt in ("detailed", "trend", "weekly"):
             rt = "weekly"
@@ -371,7 +361,7 @@ class Handler(BaseHTTPRequestHandler):
             body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
             method, msg_id, params = body.get("method"), body.get("id"), body.get("params", {})
             if method == "initialize":
-                resp = {"jsonrpc":"2.0","result":{"protocolVersion":params.get("protocolVersion","2024-11-05"),"capabilities":{"tools":{}},"serverInfo":{"name":"trendradar","version":"2.0"}},"id"[...]
+                resp = {"jsonrpc":"2.0","result":{"protocolVersion":params.get("protocolVersion","2024-11-05"),"capabilities":{"tools":{}},"serverInfo":{"name":"trendradar","version":"2.0"}},"id":msg_id}
             elif method == "notifications/initialized":
                 resp = None
             elif method == "tools/list":
