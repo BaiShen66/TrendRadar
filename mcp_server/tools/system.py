@@ -260,7 +260,6 @@ class SystemManagementTools:
                 failed_ids=failed_ids, crawl_time=crawl_time_str, crawl_date=crawl_date
             )
 
-            import os
             s3_bucket = os.environ.get("S3_BUCKET_NAME", "trendradar-data")
             s3_endpoint = os.environ.get("S3_ENDPOINT_URL", "")
             s3_key = os.environ.get("S3_ACCESS_KEY_ID", "")
