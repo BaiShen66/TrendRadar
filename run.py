@@ -5,6 +5,7 @@ TrendRadar MCP Server with REST API
   - REST:    /api/crawl, /api/search, /api/latest, /api/tools
 """
 import json
+import traceback
 import uvicorn
 from starlette.responses import JSONResponse
 from starlette.routing import Route
@@ -17,17 +18,23 @@ async def health(request):
     return JSONResponse({"status": "ok", "service": "trendradar-mcp"})
 
 
+async def safe_call(func, **kwargs):
+    try:
+        result = await func(**kwargs)
+        if isinstance(result, str):
+            return JSONResponse(json.loads(result))
+        return JSONResponse(result)
+    except Exception as e:
+        tb = traceback.format_exc()
+        return JSONResponse({"error": str(e), "traceback": tb}, status_code=500)
+
+
 async def api_crawl(request):
     params = dict(request.query_params)
     platforms = params.get("platforms")
     if platforms:
         platforms = [p.strip() for p in platforms.split(",") if p.strip()]
-    result = await trigger_crawl(
-        platforms=platforms,
-        save_to_local=False,
-        include_url=False
-    )
-    return JSONResponse(json.loads(result))
+    return await safe_call(trigger_crawl, platforms=platforms, save_to_local=False, include_url=False)
 
 
 async def api_search(request):
@@ -38,13 +45,7 @@ async def api_search(request):
     platforms = params.get("platforms")
     if platforms:
         platforms = [p.strip() for p in platforms.split(",") if p.strip()]
-    result = await search_news(
-        query=q,
-        platforms=platforms,
-        limit=int(params.get("limit", 50)),
-        include_url=True
-    )
-    return JSONResponse(json.loads(result))
+    return await safe_call(search_news, query=q, platforms=platforms, limit=int(params.get("limit", 50)), include_url=True)
 
 
 async def api_latest(request):
@@ -52,12 +53,7 @@ async def api_latest(request):
     platforms = params.get("platforms")
     if platforms:
         platforms = [p.strip() for p in platforms.split(",") if p.strip()]
-    result = await get_latest_news(
-        platforms=platforms,
-        limit=int(params.get("limit", 50)),
-        include_url=True
-    )
-    return JSONResponse(json.loads(result))
+    return await safe_call(get_latest_news, platforms=platforms, limit=int(params.get("limit", 50)), include_url=True)
 
 
 async def api_trend(request):
@@ -65,12 +61,7 @@ async def api_trend(request):
     topic = params.get("topic", "")
     if not topic:
         return JSONResponse({"error": "missing 'topic'"}, 400)
-    result = await analyze_topic_trend(
-        topic=topic,
-        analysis_type=params.get("type", "trend"),
-        granularity=params.get("granularity", "day")
-    )
-    return JSONResponse(json.loads(result))
+    return await safe_call(analyze_topic_trend, topic=topic, analysis_type=params.get("type", "trend"), granularity=params.get("granularity", "day"))
 
 
 app = mcp.sse_app()
