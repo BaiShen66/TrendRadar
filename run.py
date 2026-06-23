@@ -1,11 +1,21 @@
 """
-TrendRadar MCP Bridge (Direct Mode)
+TrendRadar MCP Bridge (Direct Tool Classes Mode)
   - POST /mcp → JSON-RPC (initialize, tools/list, tools/call)
   - GET / 和 /health → 健康检查
 """
 import json, sys, os, traceback
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from mcp_server.server import trigger_crawl, search_news, get_latest_news, analyze_topic_trend
+
+from mcp_server.tools.data_query import DataQueryTools
+from mcp_server.tools.search_tools import SearchTools
+from mcp_server.tools.analytics import AnalyticsTools
+from mcp_server.tools.system import SystemManagementTools
+
+# 初始化工具实例（单例）
+_tools_data = DataQueryTools()
+_tools_search = SearchTools()
+_tools_analytics = AnalyticsTools()
+_tools_system = SystemManagementTools()
 
 mcp_name = "trendradar"
 mcp_version = "1.0.0"
@@ -16,7 +26,7 @@ def get_tools():
         {"name": "trigger_crawl", "description": "触发全平台热搜爬取",
          "inputSchema": {"type": "object", "properties": {
              "platforms": {"type": "array", "items": {"type": "string"},
-                           "description": "平台列表，如 weibo,zhihu,baidu,bilibili"}}}},
+                           "description": "平台列表"}}}},
         {"name": "search_news", "description": "搜索新闻/热搜",
          "inputSchema": {"type": "object", "properties": {
              "query": {"type": "string", "description": "搜索关键词"},
@@ -37,18 +47,52 @@ def get_tools():
 
 
 def call_tool(name, args):
-    import asyncio
-
-    fn_map = {
-        "trigger_crawl": trigger_crawl.fn if hasattr(trigger_crawl, 'fn') else trigger_crawl,
-        "search_news": search_news.fn if hasattr(search_news, 'fn') else search_news,
-        "get_latest_news": get_latest_news.fn if hasattr(get_latest_news, 'fn') else get_latest_news,
-        "analyze_topic_trend": analyze_topic_trend.fn if hasattr(analyze_topic_trend, 'fn') else analyze_topic_trend,
-    }
-    fn = fn_map.get(name)
-    if not fn:
+    """直接调用工具类方法，绕过 FastMCP 包装"""
+    if name == "get_latest_news":
+        result = _tools_data.get_latest_news(
+            platforms=args.get("platforms"),
+            limit=args.get("limit", 50),
+            include_url=args.get("include_url", False)
+        )
+    elif name == "search_news":
+        result = _tools_search.search_news_unified(
+            query=args.get("query", ""),
+            search_mode=args.get("search_mode", "keyword"),
+            date_range=args.get("date_range"),
+            platforms=args.get("platforms"),
+            limit=args.get("limit", 50),
+            sort_by=args.get("sort_by", "relevance"),
+            threshold=args.get("threshold", 0.6),
+            include_url=args.get("include_url", False),
+            include_rss=args.get("include_rss", False),
+            rss_limit=args.get("rss_limit", 20)
+        )
+    elif name == "analyze_topic_trend":
+        result = _tools_analytics.analyze_topic_trend_unified(
+            topic=args.get("topic", ""),
+            analysis_type=args.get("analysis_type", "trend"),
+            date_range=args.get("date_range"),
+            granularity=args.get("granularity", "day"),
+            threshold=args.get("spike_threshold", 3.0),
+            time_window=args.get("time_window", 24),
+            lookahead_hours=args.get("lookahead_hours", 6),
+            confidence_threshold=args.get("confidence_threshold", 0.7)
+        )
+    elif name == "trigger_crawl":
+        result = _tools_system.trigger_crawl(
+            platforms=args.get("platforms"),
+            save_to_local=args.get("save_to_local", False),
+            include_url=args.get("include_url", False)
+        )
+    else:
         raise ValueError(f"Unknown tool: {name}")
-    result = asyncio.run(fn(**args))
+
+    if isinstance(result, dict) and "data" in result:
+        content = [{"type": "text", "text": json.dumps(d, ensure_ascii=False)} for d in result["data"]]
+    else:
+        content = [{"type": "text", "text": json.dumps(result, ensure_ascii=False)}]
+    return {"content": content}
+
 
 class Handler(BaseHTTPRequestHandler):
 
