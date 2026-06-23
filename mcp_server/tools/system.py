@@ -274,13 +274,13 @@ class SystemManagementTools:
                     region=s3_region,
                     enable_txt=True, enable_html=True, timezone=timezone
                 )
-                self.tool_log("[System] 远程存储后端已连接: %s/%s" % (s3_endpoint, s3_bucket))
+                print("[System] 远程存储后端已连接: %s/%s" % (s3_endpoint, s3_bucket))
             else:
                 storage = LocalStorageBackend(
                     data_dir=str(self.project_root / "output"),
                     enable_txt=True, enable_html=True, timezone=timezone
                 )
-                self.tool_log("[System] 未检测到远程存储配置，使用本地存储后端")
+                print("[System] 未检测到远程存储配置，使用本地存储后端")
 
             try:
                 save_success, save_error_msg, saved_files = self._persist_crawl_data(
