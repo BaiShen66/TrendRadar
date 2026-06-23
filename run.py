@@ -298,7 +298,7 @@ class Handler(BaseHTTPRequestHandler):
             body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
             method, msg_id, params = body.get("method"), body.get("id"), body.get("params", {})
             if method == "initialize":
-                resp = {"jsonrpc":"2.0","result":{"protocolVersion":params.get("protocolVersion","2024-11-05"),"capabilities":{"tools":{}},"serverInfo":{"name":"trendradar","version":"2.0"}},"id":[...] 
+                resp = {"jsonrpc":"2.0","result":{"protocolVersion":params.get("protocolVersion","2024-11-05"),"capabilities":{"tools":{}},"serverInfo":{"name":"trendradar","version":"2.0"}},"id":msg_id}
             elif method == "notifications/initialized":
                 resp = None
             elif method == "tools/list":
