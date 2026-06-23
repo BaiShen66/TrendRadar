@@ -226,7 +226,7 @@ def _run_rss():
 # ===== Call handler =====
 def run_tool(name, args):
     if name == "resolve_date_range":
-        return json.loads(DateParser.resolve_date_range_expression(args["expression"]))
+        return DateParser.resolve_date_range_expression(args["expression"])
     elif name == "get_latest_news":
         return _tools["data"].get_latest_news(args.get("platforms"), args.get("limit", 50), args.get("include_url", False))
     elif name == "get_trending_topics":
@@ -259,7 +259,7 @@ def run_tool(name, args):
     elif name == "get_platform_summary":
         return _tools["data"].get_platform_summary(args.get("platforms"), args.get("include_platform_names",True))
     elif name == "get_system_status":
-        return _tools["system"].get_system_status(args.get("include_dates",True), args.get("include_cache",True))
+        return _tools["system"].get_system_status(include_dates=args.get("include_dates",True), include_cache=args.get("include_cache",True))
     elif name == "trigger_crawl":
         r = _orig_crawl(args.get("platforms"), args.get("save_to_local",False), args.get("include_url",False))
         if r.get("success"): _run_rss()
