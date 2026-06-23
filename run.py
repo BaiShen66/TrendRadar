@@ -1,9 +1,8 @@
 """
-TrendRadar MCP Bridge (Manual JSON-RPC - Full Tools + RSS + Health)
-- POST /mcp → JSON-RPC (23 tools)
+TrendRadar MCP Bridge (23 Tools + RSS + R2 + Health)
+- POST /mcp → JSON-RPC (23 tools with full schemas)
 - GET /, /health → Health checks
-- trigger_crawl auto-fetches RSS 
-- R2 storage via env vars
+- trigger_crawl auto-fetches RSS
 """
 import json, os, traceback
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -31,107 +30,185 @@ _tools = {
     "storage": StorageSyncTools(str(PROJECT_ROOT)),
     "notification": NotificationTools(str(PROJECT_ROOT)),
 }
-print(f"[TrendRadar] {len(_tools)} tool modules loaded", flush=True)
 
-# ===== Tool implementations =====
-def _d(result):
-    if isinstance(result, dict) and "data" in result:
-        return [{"type": "text", "text": json.dumps(d, ensure_ascii=False)} for d in result["data"]]
-    return [{"type": "text", "text": json.dumps(result, ensure_ascii=False)}]
+# ===== Tool definitions with proper schemas =====
+TOOLS = []
 
-def _date(exp):
-    return json.loads(DateParser.resolve_date_range_expression(exp))
+def tool(name, desc, **props):
+    TOOLS.append({"name": name, "description": desc, "inputSchema": props})
 
-IMPLS = {}
+tool("resolve_date_range", "Parse a natural language date expression into a standard date range",
+     type="object", properties={"expression": {"type": "string"}}, required=["expression"])
 
-def reg(name):
-    def deco(fn):
-        IMPLS[name] = fn
-        return fn
-    return deco
+tool("get_latest_news", "Get the latest batch of crawled news/hotlist data",
+     type="object", properties={
+         "platforms": {"type": "array", "items": {"type": "string"}, "description": "Platform IDs (e.g. zhihu, weibo)"},
+         "limit": {"type": "number", "default": 50, "description": "Max results (max 1000)"},
+         "include_url": {"type": "boolean", "default": False, "description": "Include URLs in results"}
+     })
 
-@reg("resolve_date_range")
-def _(a): return _date(a["expression"])
+tool("get_trending_topics", "Get trending topic frequency statistics",
+     type="object", properties={
+         "top_n": {"type": "number", "default": 10},
+         "mode": {"type": "string", "enum": ["daily", "current"], "default": "current"},
+         "extract_mode": {"type": "string", "enum": ["keywords", "auto_extract"], "default": "keywords"}
+     })
 
-@reg("get_latest_news")
-def _(a): return _tools["data"].get_latest_news(a.get("platforms"), a.get("limit", 50), a.get("include_url", False))
+tool("get_latest_rss", "Get the latest RSS feed data (supports multi-day)",
+     type="object", properties={
+         "feeds": {"type": "array", "items": {"type": "string"}, "description": "Feed IDs (e.g. hacker-news, 36kr)"},
+         "days": {"type": "number", "default": 1, "description": "Days to look back (max 30)"},
+         "limit": {"type": "number", "default": 50, "description": "Max results (max 500)"},
+         "include_summary": {"type": "boolean", "default": False}
+     })
 
-@reg("get_trending_topics")
-def _(a): return _tools["data"].get_trending_topics(a.get("top_n", 10), a.get("mode", "current"), a.get("extract_mode", "keywords"))
+tool("search_rss", "Search RSS data by keyword",
+     type="object", properties={
+         "keyword": {"type": "string", "description": "Search keyword"},
+         "feeds": {"type": "array", "items": {"type": "string"}, "description": "Feed IDs to search"},
+         "days": {"type": "number", "default": 7},
+         "limit": {"type": "number", "default": 50},
+         "include_summary": {"type": "boolean", "default": False}
+     }, required=["keyword"])
 
-@reg("get_latest_rss")
-def _(a): return _tools["data"].get_latest_rss(a.get("feeds"), a.get("days", 1), a.get("limit", 50), a.get("include_summary", False))
+tool("search_news", "Search news/hotlist data by keyword",
+     type="object", properties={
+         "query": {"type": "string", "description": "Search query"},
+         "platforms": {"type": "array", "items": {"type": "string"}},
+         "limit": {"type": "number", "default": 50},
+         "include_url": {"type": "boolean", "default": False},
+         "include_rss": {"type": "boolean", "default": False}
+     }, required=["query"])
 
-@reg("search_rss")
-def _(a): return _tools["data"].search_rss(a["keyword"], a.get("feeds"), a.get("days", 7), a.get("limit", 50), a.get("include_summary", False))
+tool("search_news_advanced", "Advanced news search with more filter options",
+     type="object", properties={
+         "query": {"type": "string"},
+         "date_range": {"type": "object", "properties": {"start": {"type": "string"}, "end": {"type": "string"}}},
+         "platforms": {"type": "array", "items": {"type": "string"}},
+         "limit": {"type": "number", "default": 50},
+         "sort_by": {"type": "string", "enum": ["relevance", "date", "platform"]},
+         "include_url": {"type": "boolean", "default": False},
+         "include_rss": {"type": "boolean", "default": False}
+     }, required=["query"])
 
-@reg("search_news")
-def _(a): return _tools["search"].search_news_unified(query=a.get("query",""), search_mode="keyword", date_range=a.get("date_range"), platforms=a.get("platforms"), limit=a.get("limit",50), sort_by=a.get("sort_by","relevance"), threshold=a.get("threshold",0.6), include_url=a.get("include_url",False), include_rss=a.get("include_rss",False), rss_limit=a.get("rss_limit",20))
+tool("get_news_statistics", "Get news statistics grouped by platform or date",
+     type="object", properties={
+         "platforms": {"type": "array", "items": {"type": "string"}},
+         "date_range": {"type": "object", "properties": {"start": {"type": "string"}, "end": {"type": "string"}}},
+         "group_by": {"type": "string", "enum": ["platform", "date"], "default": "platform"}
+     })
 
-@reg("search_news_advanced")
-def _(a): return _tools["search"].search_news_advanced(a.get("query",""), a.get("date_range"), a.get("platforms"), a.get("limit",50), a.get("sort_by","relevance"), a.get("threshold",0.6), a.get("include_url",False), a.get("include_rss",False), a.get("include_processed",False))
+tool("analyze_sentiment", "Analyze sentiment/emotion trends for a topic over time",
+     type="object", properties={
+         "topic": {"type": "string", "description": "Topic keyword"},
+         "date_range": {"type": "object", "properties": {"start": {"type": "string"}, "end": {"type": "string"}}},
+         "platforms": {"type": "array", "items": {"type": "string"}},
+         "time_range": {"type": "number", "default": 24}
+     }, required=["topic"])
 
-@reg("get_news_statistics")
-def _(a): return _tools["data"].get_news_statistics(a.get("platforms"), a.get("date_range"), a.get("group_by","platform"))
+tool("analyze_topic_trend", "Analyze how a topic's popularity trend changes over time",
+     type="object", properties={
+         "topic": {"type": "string"},
+         "analysis_type": {"type": "string", "enum": ["trend", "sentiment", "overview"], "default": "trend"},
+         "date_range": {"type": "object", "properties": {"start": {"type": "string"}, "end": {"type": "string"}}},
+         "granularity": {"type": "string", "enum": ["hour", "day", "week"], "default": "day"}
+     }, required=["topic"])
 
-@reg("analyze_sentiment")
-def _(a): return _tools["analytics"].analyze_sentiment(a.get("topic",""), a.get("date_range"), a.get("platforms"), a.get("time_range",24))
+tool("analyze_cross_platform", "Cross-platform comparison analysis for a topic",
+     type="object", properties={
+         "topic": {"type": "string"},
+         "platforms": {"type": "array", "items": {"type": "string"}},
+         "date_range": {"type": "object", "properties": {"start": {"type": "string"}, "end": {"type": "string"}}}
+     }, required=["topic"])
 
-@reg("analyze_topic_trend")
-def _(a): return _tools["analytics"].analyze_topic_trend_unified(a.get("topic",""), a.get("analysis_type","trend"), a.get("date_range"), a.get("granularity","day"))
+tool("generate_summary_report", "Generate a comprehensive summary report for a topic",
+     type="object", properties={
+         "topic": {"type": "string"},
+         "date_range": {"type": "object", "properties": {"start": {"type": "string"}, "end": {"type": "string"}}},
+         "platforms": {"type": "array", "items": {"type": "string"}},
+         "report_type": {"type": "string", "enum": ["overview", "detailed", "trend"], "default": "overview"}
+     }, required=["topic"])
 
-@reg("analyze_cross_platform")
-def _(a): return _tools["analytics"].analyze_cross_platform(a.get("topic",""), a.get("platforms"), a.get("date_range"), a.get("include_overlap",True), a.get("include_timeline",True))
+tool("get_platform_summary", "Get platform summary information with readable names",
+     type="object", properties={
+         "platforms": {"type": "array", "items": {"type": "string"}},
+         "include_platform_names": {"type": "boolean", "default": True}
+     })
 
-@reg("generate_summary_report")
-def _(a): return _tools["analytics"].generate_summary_report(a.get("topic",""), a.get("date_range"), a.get("platforms"), a.get("granularity","day"), a.get("report_type","overview"))
+tool("get_system_status", "Get system health status including dates, cache, and storage info",
+     type="object", properties={
+         "include_dates": {"type": "boolean", "default": True},
+         "include_cache": {"type": "boolean", "default": True}
+     })
 
-@reg("get_platform_summary")
-def _(a): return _tools["data"].get_platform_summary(a.get("platforms"), a.get("include_platform_names",True))
+tool("trigger_crawl", "Trigger a manual crawl of hotlist data + RSS feeds",
+     type="object", properties={
+         "platforms": {"type": "array", "items": {"type": "string"}, "description": "Platform IDs to crawl (all if omitted)"},
+         "save_to_local": {"type": "boolean", "default": False},
+         "include_url": {"type": "boolean", "default": False}
+     })
 
-@reg("get_system_status")
-def _(a): return _tools["system"].get_system_status(a.get("include_dates",True), a.get("include_cache",True))
+tool("sync_from_remote", "Sync data from remote storage (R2) to local SQLite",
+     type="object", properties={
+         "days": {"type": "number", "default": 7, "description": "Days of data to sync"}
+     })
 
-@reg("sync_from_remote")
-def _(a): return _tools["storage"].sync_from_remote(a.get("days",7))
+tool("get_storage_status", "Get storage configuration and status (local + remote)",
+     type="object", properties={})
 
-@reg("get_storage_status")
-def _(a): return _tools["storage"].get_storage_status()
+tool("list_available_dates", "List available data dates from local/remote/both storage",
+     type="object", properties={
+         "source": {"type": "string", "enum": ["local", "remote", "both"], "default": "both"}
+     })
 
-@reg("list_available_dates")
-def _(a): return _tools["storage"].list_available_dates(a.get("source","both"))
+tool("read_article", "Read a full article from a URL and return clean Markdown",
+     type="object", properties={
+         "url": {"type": "string", "description": "Article URL (https://...)"},
+         "timeout": {"type": "number", "default": 30}
+     }, required=["url"])
 
-@reg("read_article")
-def _(a): return _tools["article"].read_article(a["url"], min(max(a.get("timeout",30),10),60))
+tool("read_articles_batch", "Batch read multiple articles (max 5, spaced 5s apart)",
+     type="object", properties={
+         "urls": {"type": "array", "items": {"type": "string"}, "description": "Article URLs (max 5)"},
+         "timeout": {"type": "number", "default": 30}
+     }, required=["urls"])
 
-@reg("read_articles_batch")
-def _(a): return _tools["article"].read_articles_batch(a["urls"], min(max(a.get("timeout",30),10),60))
+tool("get_channel_format_guide", "Get notification channel formatting guide",
+     type="object", properties={
+         "channel": {"type": "string", "description": "Channel ID (feishu, dingtalk, telegram, email, etc.)"}
+     })
 
-@reg("get_channel_format_guide")
-def _(a): return _tools["notification"].get_channel_format_guide(a.get("channel"))
+tool("get_notification_channels", "Get all configured notification channels and their status",
+     type="object", properties={})
 
-@reg("get_notification_channels")
-def _(a): return _tools["notification"].get_notification_channels()
+tool("send_notification", "Send a notification message via configured channels",
+     type="object", properties={
+         "message": {"type": "string", "description": "Markdown message content"},
+         "title": {"type": "string", "default": "TrendRadar 通知"},
+         "channels": {"type": "array", "items": {"type": "string"}, "description": "Target channels (all if omitted)"}
+     }, required=["message"])
 
-@reg("send_notification")
-def _(a): return _tools["notification"].send_notification(a["message"], a.get("title","TrendRadar通知"), a.get("channels"))
 
-# Enhanced trigger_crawl
+def result_json(r):
+    if isinstance(r, dict) and "data" in r:
+        return [{"type": "text", "text": json.dumps(d, ensure_ascii=False)} for d in r["data"]]
+    return [{"type": "text", "text": json.dumps(r, ensure_ascii=False)}]
+
+
+# Enhanced trigger_crawl with RSS
 _orig_crawl = _tools["system"].trigger_crawl
 
-def _fetch_rss_after():
+def _run_rss():
     try:
         cfg, _ = _tools["system"]._load_crawl_config()
         rss = cfg.get("rss", {})
-        if not rss.get("enabled", True):
-            return
+        if not rss.get("enabled", True): return
         from trendradar.crawler.rss import RSSFetcher, RSSFeedConfig
         from trendradar.utils.time import get_configured_time
         from trendradar.storage.local import LocalStorageBackend
         feeds = [RSSFeedConfig(id=f["id"], name=f["name"], url=f["url"])
                  for f in rss.get("feeds", []) if f.get("enabled", True)]
-        if not feeds:
-            return
+        if not feeds: return
         adv = cfg.get("advanced", {}).get("rss", {})
         f = RSSFetcher(feeds=feeds, request_interval=adv.get("request_interval", 1000), timeout=adv.get("timeout", 15))
         r = f.fetch_all()
@@ -139,75 +216,120 @@ def _fetch_rss_after():
         s = LocalStorageBackend(data_dir=str(PROJECT_ROOT / "output"), timezone=tz)
         try:
             s.save_rss_data(r)
-            print(f"[RSS] done", flush=True)
+            print("[RSS] done", flush=True)
         finally:
             s.cleanup()
     except Exception as e:
         print(f"[RSS] {e}", flush=True)
 
-@reg("trigger_crawl")
-def _(a):
-    r = _orig_crawl(platforms=a.get("platforms"), save_to_local=a.get("save_to_local",False), include_url=a.get("include_url",False))
-    if r.get("success"):
-        _fetch_rss_after()
-    get_cache().clear()
-    return r
 
-print(f"[TrendRadar] {len(IMPLS)} tools registered", flush=True)
+# ===== Call handler =====
+def run_tool(name, args):
+    if name == "resolve_date_range":
+        return json.loads(DateParser.resolve_date_range_expression(args["expression"]))
+    elif name == "get_latest_news":
+        return _tools["data"].get_latest_news(args.get("platforms"), args.get("limit", 50), args.get("include_url", False))
+    elif name == "get_trending_topics":
+        return _tools["data"].get_trending_topics(args.get("top_n", 10), args.get("mode", "current"), args.get("extract_mode", "keywords"))
+    elif name == "get_latest_rss":
+        return _tools["data"].get_latest_rss(args.get("feeds"), args.get("days", 1), args.get("limit", 50), args.get("include_summary", False))
+    elif name == "search_rss":
+        return _tools["data"].search_rss(args["keyword"], args.get("feeds"), args.get("days", 7), args.get("limit", 50), args.get("include_summary", False))
+    elif name == "search_news":
+        return _tools["search"].search_news_unified(
+            query=args.get("query",""), search_mode="keyword", date_range=args.get("date_range"),
+            platforms=args.get("platforms"), limit=args.get("limit",50), sort_by=args.get("sort_by","relevance"),
+            threshold=args.get("threshold",0.6), include_url=args.get("include_url",False),
+            include_rss=args.get("include_rss",False), rss_limit=args.get("rss_limit",20))
+    elif name == "search_news_advanced":
+        return _tools["search"].search_news_advanced(
+            args.get("query",""), args.get("date_range"), args.get("platforms"),
+            args.get("limit",50), args.get("sort_by","relevance"), args.get("threshold",0.6),
+            args.get("include_url",False), args.get("include_rss",False), args.get("include_processed",False))
+    elif name == "get_news_statistics":
+        return _tools["data"].get_news_statistics(args.get("platforms"), args.get("date_range"), args.get("group_by","platform"))
+    elif name == "analyze_sentiment":
+        return _tools["analytics"].analyze_sentiment(args.get("topic",""), args.get("date_range"), args.get("platforms"), args.get("time_range",24))
+    elif name == "analyze_topic_trend":
+        return _tools["analytics"].analyze_topic_trend_unified(args.get("topic",""), args.get("analysis_type","trend"), args.get("date_range"), args.get("granularity","day"))
+    elif name == "analyze_cross_platform":
+        return _tools["analytics"].analyze_cross_platform(args.get("topic",""), args.get("platforms"), args.get("date_range"))
+    elif name == "generate_summary_report":
+        return _tools["analytics"].generate_summary_report(args.get("topic",""), args.get("date_range"), args.get("platforms"), args.get("granularity","day"), args.get("report_type","overview"))
+    elif name == "get_platform_summary":
+        return _tools["data"].get_platform_summary(args.get("platforms"), args.get("include_platform_names",True))
+    elif name == "get_system_status":
+        return _tools["system"].get_system_status(args.get("include_dates",True), args.get("include_cache",True))
+    elif name == "trigger_crawl":
+        r = _orig_crawl(args.get("platforms"), args.get("save_to_local",False), args.get("include_url",False))
+        if r.get("success"): _run_rss()
+        get_cache().clear()
+        return r
+    elif name == "sync_from_remote":
+        return _tools["storage"].sync_from_remote(args.get("days",7))
+    elif name == "get_storage_status":
+        return _tools["storage"].get_storage_status()
+    elif name == "list_available_dates":
+        return _tools["storage"].list_available_dates(args.get("source","both"))
+    elif name == "read_article":
+        return _tools["article"].read_article(args["url"], min(max(args.get("timeout",30),10),60))
+    elif name == "read_articles_batch":
+        return _tools["article"].read_articles_batch(args["urls"], min(max(args.get("timeout",30),10),60))
+    elif name == "get_channel_format_guide":
+        return _tools["notification"].get_channel_format_guide(args.get("channel"))
+    elif name == "get_notification_channels":
+        return _tools["notification"].get_notification_channels()
+    elif name == "send_notification":
+        return _tools["notification"].send_notification(args["message"], args.get("title","TrendRadar通知"), args.get("channels"))
+    else:
+        raise ValueError(f"Unknown tool: {name}")
 
-TOOLS_LIST = sorted([
-    {"name": k, "description": IMPLS[k].__doc__ or k.replace("_"," "), "inputSchema": {"type": "object", "properties": {}, "required": []}}
-    for k in IMPLS
-], key=lambda x: x["name"])
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path in ("/", "/health"):
-            self._send(200, json.dumps({"status": "ok", "service": "trendradar", "tools": len(IMPLS)}))
+            self.send_json(200, {"status": "ok", "service": "trendradar", "tools": len(TOOLS)})
         else:
             self.send_response(404); self.end_headers()
+
     def do_POST(self):
         if self.path != "/mcp":
             self.send_response(404); self.end_headers(); return
         try:
             body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
-            m, i, p = body.get("method"), body.get("id"), body.get("params", {})
-            if m == "initialize":
-                resp = {"jsonrpc":"2.0", "result":{"protocolVersion":p.get("protocolVersion","2024-11-05"),"capabilities":{"tools":{}},"serverInfo":{"name":"trendradar","version":"2.0"}}, "id":i}
-            elif m == "notifications/initialized":
+            method, msg_id, params = body.get("method"), body.get("id"), body.get("params", {})
+            if method == "initialize":
+                resp = {"jsonrpc":"2.0","result":{"protocolVersion":params.get("protocolVersion","2024-11-05"),"capabilities":{"tools":{}},"serverInfo":{"name":"trendradar","version":"2.0"}},"id":msg_id}
+            elif method == "notifications/initialized":
                 resp = None
-            elif m == "tools/list":
-                resp = {"jsonrpc":"2.0", "result":{"tools":TOOLS_LIST}, "id":i}
-            elif m == "tools/call":
-                fn = IMPLS.get(p.get("name"))
-                if not fn:
-                    resp = {"jsonrpc":"2.0", "error":{"code":-32601,"message":f"Unknown: {p.get('name')}"}, "id":i}
-                else:
-                    try:
-                        r = fn(p.get("arguments",{}))
-                        resp = {"jsonrpc":"2.0", "result":{"content":_d(r)}, "id":i}
-                    except Exception as e:
-                        resp = {"jsonrpc":"2.0", "error":{"code":-32603,"message":str(e),"data":traceback.format_exc()}, "id":i}
+            elif method == "tools/list":
+                resp = {"jsonrpc":"2.0","result":{"tools":TOOLS},"id":msg_id}
+            elif method == "tools/call":
+                try:
+                    r = run_tool(params.get("name"), params.get("arguments", {}))
+                    resp = {"jsonrpc":"2.0","result":{"content":result_json(r)},"id":msg_id}
+                except Exception as e:
+                    resp = {"jsonrpc":"2.0","error":{"code":-32603,"message":str(e),"data":traceback.format_exc()},"id":msg_id}
             else:
-                resp = {"jsonrpc":"2.0", "error":{"code":-32601,"message":f"Unknown method: {m}"}, "id":i}
-            if resp:
-                self._send(200, json.dumps(resp))
-            else:
-                self.send_response(202); self.end_headers()
+                resp = {"jsonrpc":"2.0","error":{"code":-32601,"message":f"Unknown: {method}"},"id":msg_id}
+            if resp: self.send_json(200, resp)
+            else: self.send_response(202); self.end_headers()
         except json.JSONDecodeError:
-            self._send(400, json.dumps({"jsonrpc":"2.0","error":{"code":-32700,"message":"Parse error"}}))
+            self.send_json(400, {"jsonrpc":"2.0","error":{"code":-32700,"message":"Parse error"}})
         except Exception as e:
-            self._send(500, json.dumps({"jsonrpc":"2.0","error":{"code":-32603,"message":str(e)}}))
-    def _send(self, s, b):
-        self.send_response(s)
-        self.send_header("Content-Type","application/json")
-        self.send_header("Access-Control-Allow-Origin","*")
+            self.send_json(500, {"jsonrpc":"2.0","error":{"code":-32603,"message":str(e)}})
+
+    def send_json(self, status, obj):
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
-        try: self.wfile.write(b.encode())
+        try: self.wfile.write(json.dumps(obj).encode())
         except BrokenPipeError: pass
     def log_message(self, *a): pass
 
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
-    print(f"TrendRadar MCP on :{port}/mcp ({len(IMPLS)} tools)", flush=True)
+    print(f"TrendRadar MCP v2.0 :{port}/mcp ({len(TOOLS)} tools with schemas)", flush=True)
     HTTPServer(("0.0.0.0", port), Handler).serve_forever()
