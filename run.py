@@ -37,6 +37,8 @@ def get_tools():
 
 
 def call_tool(name, args):
+    import asyncio
+
     fn_map = {
         "trigger_crawl": trigger_crawl.fn if hasattr(trigger_crawl, 'fn') else trigger_crawl,
         "search_news": search_news.fn if hasattr(search_news, 'fn') else search_news,
@@ -46,15 +48,7 @@ def call_tool(name, args):
     fn = fn_map.get(name)
     if not fn:
         raise ValueError(f"Unknown tool: {name}")
-    result = fn(**args)
-    if isinstance(result, str):
-        result = json.loads(result)
-    if isinstance(result, dict) and "data" in result:
-        content = [{"type": "text", "text": json.dumps(d, ensure_ascii=False)} for d in result["data"]]
-    else:
-        content = [{"type": "text", "text": json.dumps(result, ensure_ascii=False)}]
-    return {"content": content}
-
+    result = asyncio.run(fn(**args))
 
 class Handler(BaseHTTPRequestHandler):
 
