@@ -282,7 +282,6 @@ class SystemManagementTools:
                     enable_txt=True, enable_html=True, timezone=timezone
                 )
                 self.tool_log("[System] 未检测到远程存储配置，使用本地存储后端")
-            )
 
             try:
                 save_success, save_error_msg, saved_files = self._persist_crawl_data(
