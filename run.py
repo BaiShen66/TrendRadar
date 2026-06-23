@@ -7,8 +7,9 @@ TrendRadar MCP Server with REST API
 import json
 import traceback
 import uvicorn
+from starlette.applications import Starlette
 from starlette.responses import JSONResponse
-from starlette.routing import Route
+from starlette.routing import Route, Mount
 
 from mcp_server.server import mcp
 from mcp_server.server import trigger_crawl, search_news, get_latest_news, analyze_topic_trend
@@ -20,7 +21,8 @@ async def health(request):
 
 async def safe_call(func, **kwargs):
     try:
-        result = await func(**kwargs)
+        fn = func.fn if hasattr(func, 'fn') else func
+        result = await fn(**kwargs)
         if isinstance(result, str):
             return JSONResponse(json.loads(result))
         return JSONResponse(result)
@@ -64,13 +66,15 @@ async def api_trend(request):
     return await safe_call(analyze_topic_trend, topic=topic, analysis_type=params.get("type", "trend"), granularity=params.get("granularity", "day"))
 
 
-app = mcp.sse_app()
-app.routes.extend([
+sse_app = mcp.sse_app()
+
+app = Starlette(routes=[
     Route("/health", endpoint=health, methods=["GET"]),
     Route("/api/crawl", endpoint=api_crawl, methods=["GET"]),
     Route("/api/search", endpoint=api_search, methods=["GET"]),
     Route("/api/latest", endpoint=api_latest, methods=["GET"]),
     Route("/api/trend", endpoint=api_trend, methods=["GET"]),
+    Mount("/", app=sse_app),
 ])
 
 if __name__ == "__main__":
