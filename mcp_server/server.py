@@ -1069,7 +1069,7 @@ async def get_notification_channels() -> str:
 
 
 @mcp.tool
-async def send_notification(
+async def send_channel_notification(
     message: str,
     title: str = "TrendRadar 通知",
     channels: Optional[List[str]] = None,
@@ -1196,7 +1196,7 @@ def run_server(
     print("    === 通知推送工具 ===")
     print("    24. get_channel_format_guide  - 获取渠道格式化策略指南（提示词）")
     print("    25. get_notification_channels - 获取已配置的通知渠道状态")
-    print("    26. send_notification         - 向通知渠道发送消息（自动适配格式）")
+    print("    26. send_channel_notification         - 向通知渠道发送消息（自动适配格式）")
     print("=" * 60)
     print()
 
