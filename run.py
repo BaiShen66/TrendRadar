@@ -273,13 +273,19 @@ def run_tool(name, args):
             "statistics": stats
         }
     elif name == "tr_analyze_sentiment":
-        return _tools["analytics"].analyze_sentiment(args.get("topic",""), args.get("date_range"), args.get("platforms"), args.get("time_range",24))
+        return _tools["analytics"].analyze_sentiment(
+            topic=args.get("topic"),
+            platforms=args.get("platforms"),
+            date_range=args.get("date_range"),
+            limit=args.get("limit", 50),
+            sort_by_weight=args.get("sort_by_weight", True),
+            include_url=args.get("include_url", False))
     elif name == "tr_analyze_topic_trend":
         return _tools["analytics"].analyze_topic_trend_unified(
-            topic=args.get("topic",""),
-            analysis_type=args.get("analysis_type","trend"),
+            topic=args.get("topic", ""),
+            analysis_type=args.get("analysis_type", "trend"),
             date_range=args.get("date_range"),
-            granularity=args.get("granularity","day"))
+            granularity=args.get("granularity", "day"))
     elif name == "tr_analyze_cross_platform":
         return _tools["analytics"].analyze_data_insights_unified(
             insight_type="platform_compare",
