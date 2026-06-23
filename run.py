@@ -37,24 +37,24 @@ TOOLS = []
 def tool(name, desc, **props):
     TOOLS.append({"name": name, "description": desc, "inputSchema": props})
 
-tool("resolve_date_range", "Parse a natural language date expression into a standard date range",
+tool("tr_resolve_date_range", "Parse a natural language date expression into a standard date range",
      type="object", properties={"expression": {"type": "string"}}, required=["expression"])
 
-tool("get_latest_news", "Get the latest batch of crawled news/hotlist data",
+tool("tr_get_latest_news", "Get the latest batch of crawled news/hotlist data",
      type="object", properties={
          "platforms": {"type": "array", "items": {"type": "string"}, "description": "Platform IDs (e.g. zhihu, weibo)"},
          "limit": {"type": "number", "default": 50, "description": "Max results (max 1000)"},
          "include_url": {"type": "boolean", "default": False, "description": "Include URLs in results"}
      })
 
-tool("get_trending_topics", "Get trending topic frequency statistics",
+tool("tr_get_trending_topics", "Get trending topic frequency statistics",
      type="object", properties={
          "top_n": {"type": "number", "default": 10},
          "mode": {"type": "string", "enum": ["daily", "current"], "default": "current"},
          "extract_mode": {"type": "string", "enum": ["keywords", "auto_extract"], "default": "keywords"}
      })
 
-tool("get_latest_rss", "Get the latest RSS feed data (supports multi-day)",
+tool("tr_get_latest_rss", "Get the latest RSS feed data (supports multi-day)",
      type="object", properties={
          "feeds": {"type": "array", "items": {"type": "string"}, "description": "Feed IDs (e.g. hacker-news, 36kr)"},
          "days": {"type": "number", "default": 1, "description": "Days to look back (max 30)"},
@@ -62,7 +62,7 @@ tool("get_latest_rss", "Get the latest RSS feed data (supports multi-day)",
          "include_summary": {"type": "boolean", "default": False}
      })
 
-tool("search_rss", "Search RSS data by keyword",
+tool("tr_search_rss", "Search RSS data by keyword",
      type="object", properties={
          "keyword": {"type": "string", "description": "Search keyword"},
          "feeds": {"type": "array", "items": {"type": "string"}, "description": "Feed IDs to search"},
@@ -71,7 +71,7 @@ tool("search_rss", "Search RSS data by keyword",
          "include_summary": {"type": "boolean", "default": False}
      }, required=["keyword"])
 
-tool("search_news", "Search news/hotlist data by keyword",
+tool("tr_search_news", "Search news/hotlist data by keyword",
      type="object", properties={
          "query": {"type": "string", "description": "Search query"},
          "platforms": {"type": "array", "items": {"type": "string"}},
@@ -80,7 +80,7 @@ tool("search_news", "Search news/hotlist data by keyword",
          "include_rss": {"type": "boolean", "default": False}
      }, required=["query"])
 
-tool("search_news_advanced", "Advanced news search with more filter options",
+tool("tr_search_news_advanced", "Advanced news search with more filter options",
      type="object", properties={
          "query": {"type": "string"},
          "date_range": {"type": "object", "properties": {"start": {"type": "string"}, "end": {"type": "string"}}},
@@ -91,14 +91,14 @@ tool("search_news_advanced", "Advanced news search with more filter options",
          "include_rss": {"type": "boolean", "default": False}
      }, required=["query"])
 
-tool("get_news_statistics", "Get news statistics grouped by platform or date",
+tool("tr_get_news_statistics", "Get news statistics grouped by platform or date",
      type="object", properties={
          "platforms": {"type": "array", "items": {"type": "string"}},
          "date_range": {"type": "object", "properties": {"start": {"type": "string"}, "end": {"type": "string"}}},
          "group_by": {"type": "string", "enum": ["platform", "date"], "default": "platform"}
      })
 
-tool("analyze_sentiment", "Analyze sentiment/emotion trends for a topic over time",
+tool("tr_analyze_sentiment", "Analyze sentiment/emotion trends for a topic over time",
      type="object", properties={
          "topic": {"type": "string", "description": "Topic keyword"},
          "date_range": {"type": "object", "properties": {"start": {"type": "string"}, "end": {"type": "string"}}},
@@ -106,7 +106,7 @@ tool("analyze_sentiment", "Analyze sentiment/emotion trends for a topic over tim
          "time_range": {"type": "number", "default": 24}
      }, required=["topic"])
 
-tool("analyze_topic_trend", "Analyze how a topic's popularity trend changes over time",
+tool("tr_analyze_topic_trend", "Analyze how a topic's popularity trend changes over time",
      type="object", properties={
          "topic": {"type": "string"},
          "analysis_type": {"type": "string", "enum": ["trend", "sentiment", "overview"], "default": "trend"},
@@ -114,14 +114,14 @@ tool("analyze_topic_trend", "Analyze how a topic's popularity trend changes over
          "granularity": {"type": "string", "enum": ["hour", "day", "week"], "default": "day"}
      }, required=["topic"])
 
-tool("analyze_cross_platform", "Cross-platform comparison analysis for a topic",
+tool("tr_analyze_cross_platform", "Cross-platform comparison analysis for a topic",
      type="object", properties={
          "topic": {"type": "string"},
          "platforms": {"type": "array", "items": {"type": "string"}},
          "date_range": {"type": "object", "properties": {"start": {"type": "string"}, "end": {"type": "string"}}}
      }, required=["topic"])
 
-tool("generate_summary_report", "Generate a comprehensive summary report for a topic",
+tool("tr_generate_summary_report", "Generate a comprehensive summary report for a topic",
      type="object", properties={
          "topic": {"type": "string"},
          "date_range": {"type": "object", "properties": {"start": {"type": "string"}, "end": {"type": "string"}}},
@@ -129,56 +129,56 @@ tool("generate_summary_report", "Generate a comprehensive summary report for a t
          "report_type": {"type": "string", "enum": ["overview", "detailed", "trend"], "default": "overview"}
      }, required=["topic"])
 
-tool("get_platform_summary", "Get platform summary information with readable names",
+tool("tr_get_platform_summary", "Get platform summary information with readable names",
      type="object", properties={
          "platforms": {"type": "array", "items": {"type": "string"}},
          "include_platform_names": {"type": "boolean", "default": True}
      })
 
-tool("get_system_status", "Get system health status including dates, cache, and storage info",
+tool("tr_get_system_status", "Get system health status including dates, cache, and storage info",
      type="object", properties={})
 
-tool("trigger_crawl", "Trigger a manual crawl of hotlist data + RSS feeds",
+tool("tr_trigger_crawl", "Trigger a manual crawl of hotlist data + RSS feeds",
      type="object", properties={
          "platforms": {"type": "array", "items": {"type": "string"}, "description": "Platform IDs to crawl (all if omitted)"},
          "save_to_local": {"type": "boolean", "default": False},
          "include_url": {"type": "boolean", "default": False}
      })
 
-tool("sync_from_remote", "Sync data from remote storage (R2) to local SQLite",
+tool("tr_sync_from_remote", "Sync data from remote storage (R2) to local SQLite",
      type="object", properties={
          "days": {"type": "number", "default": 7, "description": "Days of data to sync"}
      })
 
-tool("get_storage_status", "Get storage configuration and status (local + remote)",
+tool("tr_get_storage_status", "Get storage configuration and status (local + remote)",
      type="object", properties={})
 
-tool("list_available_dates", "List available data dates from local/remote/both storage",
+tool("tr_list_available_dates", "List available data dates from local/remote/both storage",
      type="object", properties={
          "source": {"type": "string", "enum": ["local", "remote", "both"], "default": "both"}
      })
 
-tool("read_article", "Read a full article from a URL and return clean Markdown",
+tool("tr_read_article", "Read a full article from a URL and return clean Markdown",
      type="object", properties={
          "url": {"type": "string", "description": "Article URL (https://...)"},
          "timeout": {"type": "number", "default": 30}
      }, required=["url"])
 
-tool("read_articles_batch", "Batch read multiple articles (max 5, spaced 5s apart)",
+tool("tr_read_articles_batch", "Batch read multiple articles (max 5, spaced 5s apart)",
      type="object", properties={
          "urls": {"type": "array", "items": {"type": "string"}, "description": "Article URLs (max 5)"},
          "timeout": {"type": "number", "default": 30}
      }, required=["urls"])
 
-tool("get_channel_format_guide", "Get notification channel formatting guide",
+tool("tr_get_channel_format_guide", "Get notification channel formatting guide",
      type="object", properties={
          "channel": {"type": "string", "description": "Channel ID (feishu, dingtalk, telegram, email, etc.)"}
      })
 
-tool("get_notification_channels", "Get all configured notification channels and their status",
+tool("tr_get_notification_channels", "Get all configured notification channels and their status",
      type="object", properties={})
 
-tool("send_notification", "Send a notification message via configured channels",
+tool("tr_send_notification", "Send a notification message via configured channels",
      type="object", properties={
          "message": {"type": "string", "description": "Markdown message content"},
          "title": {"type": "string", "default": "TrendRadar 通知"},
@@ -222,63 +222,63 @@ def _run_rss():
 
 # ===== Call handler =====
 def run_tool(name, args):
-    if name == "resolve_date_range":
+    if name == "tr_resolve_date_range":
         return DateParser.resolve_date_range_expression(args["expression"])
-    elif name == "get_latest_news":
+    elif name == "tr_get_latest_news":
         return _tools["data"].get_latest_news(args.get("platforms"), args.get("limit", 50), args.get("include_url", False))
-    elif name == "get_trending_topics":
+    elif name == "tr_get_trending_topics":
         return _tools["data"].get_trending_topics(args.get("top_n", 10), args.get("mode", "current"), args.get("extract_mode", "keywords"))
-    elif name == "get_latest_rss":
+    elif name == "tr_get_latest_rss":
         return _tools["data"].get_latest_rss(args.get("feeds"), args.get("days", 1), args.get("limit", 50), args.get("include_summary", False))
-    elif name == "search_rss":
+    elif name == "tr_search_rss":
         return _tools["data"].search_rss(args["keyword"], args.get("feeds"), args.get("days", 7), args.get("limit", 50), args.get("include_summary", False))
-    elif name == "search_news":
+    elif name == "tr_search_news":
         return _tools["search"].search_news_unified(
             query=args.get("query",""), search_mode="keyword", date_range=args.get("date_range"),
             platforms=args.get("platforms"), limit=args.get("limit",50), sort_by=args.get("sort_by","relevance"),
             threshold=args.get("threshold",0.6), include_url=args.get("include_url",False),
             include_rss=args.get("include_rss",False), rss_limit=args.get("rss_limit",20))
-    elif name == "search_news_advanced":
+    elif name == "tr_search_news_advanced":
         return _tools["search"].search_news_advanced(
             args.get("query",""), args.get("date_range"), args.get("platforms"),
             args.get("limit",50), args.get("sort_by","relevance"), args.get("threshold",0.6),
             args.get("include_url",False), args.get("include_rss",False), args.get("include_processed",False))
-    elif name == "get_news_statistics":
+    elif name == "tr_get_news_statistics":
         return _tools["data"].get_news_statistics(args.get("platforms"), args.get("date_range"), args.get("group_by","platform"))
-    elif name == "analyze_sentiment":
+    elif name == "tr_analyze_sentiment":
         return _tools["analytics"].analyze_sentiment(args.get("topic",""), args.get("date_range"), args.get("platforms"), args.get("time_range",24))
-    elif name == "analyze_topic_trend":
+    elif name == "tr_analyze_topic_trend":
         return _tools["analytics"].analyze_topic_trend_unified(args.get("topic",""), args.get("analysis_type","trend"), args.get("date_range"), args.get("granularity","day"))
-    elif name == "analyze_cross_platform":
+    elif name == "tr_analyze_cross_platform":
         return _tools["analytics"].analyze_cross_platform(args.get("topic",""), args.get("platforms"), args.get("date_range"))
-    elif name == "generate_summary_report":
+    elif name == "tr_generate_summary_report":
         return _tools["analytics"].generate_summary_report(args.get("topic",""), args.get("date_range"), args.get("platforms"), args.get("granularity","day"), args.get("report_type","overview"))
-    elif name == "get_platform_summary":
+    elif name == "tr_get_platform_summary":
         return _tools["data"].get_platform_summary(args.get("platforms"), args.get("include_platform_names",True))
-    elif name == "get_system_status":
+    elif name == "tr_get_system_status":
         return _tools["system"].get_system_status()
-    elif name == "trigger_crawl":
+    elif name == "tr_trigger_crawl":
         r = _orig_crawl(args.get("platforms"), args.get("save_to_local",False), args.get("include_url",False))
         if r.get("success"):
             _run_rss()
             _tools["storage"].sync_from_remote(days=1)
         get_cache().clear()
         return r
-    elif name == "sync_from_remote":
+    elif name == "tr_sync_from_remote":
         return _tools["storage"].sync_from_remote(args.get("days",7))
-    elif name == "get_storage_status":
+    elif name == "tr_get_storage_status":
         return _tools["storage"].get_storage_status()
-    elif name == "list_available_dates":
+    elif name == "tr_list_available_dates":
         return _tools["storage"].list_available_dates(args.get("source","both"))
-    elif name == "read_article":
+    elif name == "tr_read_article":
         return _tools["article"].read_article(args["url"], min(max(args.get("timeout",30),10),60))
-    elif name == "read_articles_batch":
+    elif name == "tr_read_articles_batch":
         return _tools["article"].read_articles_batch(args["urls"], min(max(args.get("timeout",30),10),60))
-    elif name == "get_channel_format_guide":
+    elif name == "tr_get_channel_format_guide":
         return _tools["notification"].get_channel_format_guide(args.get("channel"))
-    elif name == "get_notification_channels":
+    elif name == "tr_get_notification_channels":
         return _tools["notification"].get_notification_channels()
-    elif name == "send_notification":
+    elif name == "tr_send_notification":
         return _tools["notification"].send_notification(args["message"], args.get("title","TrendRadar通知"), args.get("channels"))
     else:
         raise ValueError(f"Unknown tool: {name}")
@@ -298,7 +298,7 @@ class Handler(BaseHTTPRequestHandler):
             body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
             method, msg_id, params = body.get("method"), body.get("id"), body.get("params", {})
             if method == "initialize":
-                resp = {"jsonrpc":"2.0","result":{"protocolVersion":params.get("protocolVersion","2024-11-05"),"capabilities":{"tools":{}},"serverInfo":{"name":"trendradar","version":"2.0"}},"id":msg_id}
+                resp = {"jsonrpc":"2.0","result":{"protocolVersion":params.get("protocolVersion","2024-11-05"),"capabilities":{"tools":{}},"serverInfo":{"name":"trendradar","version":"2.0"}},"id":[...] 
             elif method == "notifications/initialized":
                 resp = None
             elif method == "tools/list":
