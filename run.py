@@ -136,10 +136,7 @@ tool("get_platform_summary", "Get platform summary information with readable nam
      })
 
 tool("get_system_status", "Get system health status including dates, cache, and storage info",
-     type="object", properties={
-         "include_dates": {"type": "boolean", "default": True},
-         "include_cache": {"type": "boolean", "default": True}
-     })
+     type="object", properties={})
 
 tool("trigger_crawl", "Trigger a manual crawl of hotlist data + RSS feeds",
      type="object", properties={
@@ -259,7 +256,7 @@ def run_tool(name, args):
     elif name == "get_platform_summary":
         return _tools["data"].get_platform_summary(args.get("platforms"), args.get("include_platform_names",True))
     elif name == "get_system_status":
-        return _tools["system"].get_system_status(include_dates=args.get("include_dates",True), include_cache=args.get("include_cache",True))
+        return _tools["system"].get_system_status()
     elif name == "trigger_crawl":
         r = _orig_crawl(args.get("platforms"), args.get("save_to_local",False), args.get("include_url",False))
         if r.get("success"): _run_rss()
